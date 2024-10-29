@@ -53,8 +53,27 @@ pathDistance mapX (x:y:xs)=
 
 
 
+
 rome :: RoadMap -> [City]
-rome = undefined
+rome mapX =  
+    let cityList = cities mapX
+        connectionList = listAllConnections cityList mapX
+        maxConnections = maximum [connection | (_ , connection)<-connectionList]
+    in [city |(city, connection)<-connectionList, connection == maxConnections ]
+
+countConnections :: City -> RoadMap -> Int   --counts the number os connections of a given city
+countConnections _ [] = 0
+countConnections cityX ((city1, city2, d):xs)
+    |cityX == city1 || cityX == city2 = 1+ countConnections cityX xs
+    |otherwise = countConnections cityX xs
+
+listAllConnections :: [City] -> RoadMap -> [(City, Int)]
+
+listAllConnections _ [] = []
+listAllConnections [] _ = []
+listAllConnections (cityX:xs) mapX = (cityX,countConnections cityX mapX) : listAllConnections xs mapX
+
+
 
 isStronglyConnected :: RoadMap -> Bool
 isStronglyConnected = undefined
