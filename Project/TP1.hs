@@ -38,11 +38,20 @@ adjacent [] _ =[]
 adjacent ((cityX, cityY, d):xs) city1
     | cityX == city1 = (cityY, d) : adjacent xs city1
     | cityY == city1 = (cityX, d) : adjacent xs city1
-    | otherwise = adjacent xs city1 
+    | otherwise = adjacent xs city1
 
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
-pathDistance = undefined
+pathDistance _ [] = Just 0
+pathDistance _ [x] = Just 0
+pathDistance mapX (x:y:xs)=
+    case distance mapX x y of
+        Nothing -> Nothing
+        Just d -> case pathDistance mapX (y:xs) of
+            Nothing -> Nothing
+            Just remainingDistance -> Just (d + remainingDistance)
+
+
 
 rome :: RoadMap -> [City]
 rome = undefined
