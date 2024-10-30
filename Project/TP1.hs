@@ -39,6 +39,12 @@ adjacent ((cityX, cityY, d):xs) city1
     | cityX == city1 = (cityY, d) : adjacent xs city1
     | cityY == city1 = (cityX, d) : adjacent xs city1
     | otherwise = adjacent xs city1
+adjacentCity :: RoadMap -> City -> [City]
+adjacentCity [] _ =[]
+adjacentCity ((cityX, cityY, d):xs) city1
+    | cityX == city1 = cityY : adjacentCity xs city1
+    | cityY == city1 = cityX : adjacentCity xs city1
+    | otherwise = adjacentCity xs city1
 
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
@@ -55,7 +61,7 @@ pathDistance mapX (x:y:xs)=
 
 
 rome :: RoadMap -> [City]
-rome mapX =  
+rome mapX =
     let cityList = cities mapX
         connectionList = listAllConnections cityList mapX
         maxConnections = maximum [connection | (_ , connection)<-connectionList]
@@ -76,7 +82,26 @@ listAllConnections (cityX:xs) mapX = (cityX,countConnections cityX mapX) : listA
 
 
 isStronglyConnected :: RoadMap -> Bool
-isStronglyConnected = undefined
+isStronglyConnected mapX=
+    case cities mapX of
+        [] -> True
+        (starCity:_) -> isConneted starCity mapX && isConneted starCity (reverseGraph mapX)
+
+reverseGraph:: RoadMap -> RoadMap
+reverseGraph [] = []
+reverseGraph ((city1, city2, d):xs) = (city2, city1, d) : reverseGraph xs
+
+dfsVisit:: City -> RoadMap -> [City] -> [City]
+dfsVisit currentCity mapX visited
+    | null (adjacentCity mapX currentCity) = []
+    | currentCity `elem` visited = visited
+    | otherwise = foldl (\vis neighbor -> dfsVisit neighbor mapX vis) (currentCity : visited) (adjacentCity mapX currentCity)
+
+isConneted:: City-> RoadMap -> Bool
+isConneted starCity mapX=
+    let allCities = cities mapX
+        visited = dfsVisit starCity mapX []
+    in length visited == length allCities
 
 shortestPath :: RoadMap -> City -> City -> [Path]
 shortestPath = undefined
@@ -96,5 +121,4 @@ gTest2 = [("0","1",10),("0","2",15),("0","3",20),("1","2",35),("1","3",25),("2",
 
 gTest3 :: RoadMap -- unconnected graph
 gTest3 = [("0","1",4),("2","3",2)]
-
 
