@@ -11,9 +11,9 @@ type Path = [City]
 type Distance = Int
 
 type RoadMap = [(City,City,Distance)]
---sampleRoadMap = [("Porto", "Lisboa", 300), ("Porto", "Braga", 50), ("Lisboa", "Faro", 280), ("Braga", "Coimbra", 120), ("Coimbra", "Lisboa", 200)]
 
-cities :: RoadMap -> [City]
+
+cities :: RoadMap -> [City] -- Returns a list with all the cities referenced in a RoadMap 
 cities mapX = Data.List.nub (allCities mapX)
 
 allCities :: RoadMap -> [City] -- Returns a list with all the cities referenced in a RoadMap (with duplicates)
@@ -21,20 +21,21 @@ allCities [] = []
 allCities ((city1,city2,d):xs) = city1 : city2 : allCities xs
 
 
-areAdjacent :: RoadMap -> City -> City -> Bool
-areAdjacent [] _ _= False
-areAdjacent ((cityX, cityY, d):xs) city1 city2 = ((city1 == cityX && city2 == cityY ) || city1 == cityY && city2 == cityX) || areAdjacent xs city1 city2
+areAdjacent :: RoadMap -> City -> City -> Bool -- Checks if two cities of a RoadMap are adjacent 
+areAdjacent [] _ _= False                      -- returning True if they are, and False otherwise 
+areAdjacent ((cityX, cityY, d):xs) city1 city2 = 
+    ((city1 == cityX && city2 == cityY ) || city1 == cityY && city2 == cityX) || areAdjacent xs city1 city2
 
 
-distance :: RoadMap -> City -> City -> Maybe Distance
-distance mapX city1 city2 | not (areAdjacent mapX city1 city2) = Nothing
+distance :: RoadMap -> City -> City -> Maybe Distance                       -- Returns the distance between two cities if
+distance mapX city1 city2 | not (areAdjacent mapX city1 city2) = Nothing    -- they are connected and Nothing otherwise
 distance ((cityX, cityY, d):xs) city1 city2
     |(city1 == cityX && city2 == cityY ) || city1 == cityY && city2 == cityX = Just d
     |otherwise = distance xs city1 city2
 
 
-adjacent :: RoadMap -> City -> [(City,Distance)]
-adjacent [] _ =[]
+adjacent :: RoadMap -> City -> [(City,Distance)]        -- Returns a list of cities adjacent to the given city,
+adjacent [] _ =[]                                       --  along with the respective distances between them
 adjacent ((cityX, cityY, d):xs) city1
     | cityX == city1 = (cityY, d) : adjacent xs city1
     | cityY == city1 = (cityX, d) : adjacent xs city1
@@ -47,8 +48,8 @@ adjacentCity ((cityX, cityY, d):xs) city1
     | otherwise = adjacentCity xs city1
 
 
-pathDistance :: RoadMap -> Path -> Maybe Distance
-pathDistance _ [] = Just 0
+pathDistance :: RoadMap -> Path -> Maybe Distance  -- Given a list of cities (Path), returns the total distance if all cities in the path are adjacent.
+pathDistance _ [] = Just 0                         -- Returns Nothing if any two consecutive cities in the path are not directly connected.                         
 pathDistance _ [x] = Just 0
 pathDistance mapX (x:y:xs)=
     case distance mapX x y of
@@ -60,45 +61,44 @@ pathDistance mapX (x:y:xs)=
 
 
 
-rome :: RoadMap -> [City]
+rome :: RoadMap -> [City]   -- returns a list with the cities that have the maximum number of direct connections 
 rome mapX =
     let cityList = cities mapX
         connectionList = listAllConnections cityList mapX
         maxConnections = maximum [connection | (_ , connection)<-connectionList]
     in [city |(city, connection)<-connectionList, connection == maxConnections ]
 
-countConnections :: City -> RoadMap -> Int   --counts the number os connections of a given city
+countConnections :: City -> RoadMap -> Int   --counts the number ofCities adjacent to a given city
 countConnections _ [] = 0
 countConnections cityX ((city1, city2, d):xs)
     |cityX == city1 || cityX == city2 = 1+ countConnections cityX xs
     |otherwise = countConnections cityX xs
 
-listAllConnections :: [City] -> RoadMap -> [(City, Int)]
-
-listAllConnections _ [] = []
+listAllConnections :: [City] -> RoadMap -> [(City, Int)] -- Returns a list of pairs, where each pair    
+listAllConnections _ [] = []                             -- contains a city and its number of direct connections in the roadmap     
 listAllConnections [] _ = []
 listAllConnections (cityX:xs) mapX = (cityX,countConnections cityX mapX) : listAllConnections xs mapX
 
 
 
-isStronglyConnected :: RoadMap -> Bool
-isStronglyConnected mapX=
+isStronglyConnected :: RoadMap -> Bool  --Checks if a RoadMap is stringly connected by performing a DFS in each direction
+isStronglyConnected mapX=               -- 
     case cities mapX of
         [] -> True
         (starCity:_) -> isConneted starCity mapX && isConneted starCity (reverseGraph mapX)
 
-reverseGraph:: RoadMap -> RoadMap
+reverseGraph:: RoadMap -> RoadMap   -- returns a RoadMap with the direction of the connections reversed 
 reverseGraph [] = []
 reverseGraph ((city1, city2, d):xs) = (city2, city1, d) : reverseGraph xs
 
-dfsVisit:: City -> RoadMap -> [City] -> [City]
-dfsVisit currentCity mapX visited
+dfsVisit:: City -> RoadMap -> [City] -> [City] -- performs a Depth First Searh in the RoadMap (graph) starting from a given city
+dfsVisit currentCity mapX visited              -- returns a list with the cities visited
     | null (adjacentCity mapX currentCity) = []
     | currentCity `elem` visited = visited
     | otherwise = foldl (\vis neighbor -> dfsVisit neighbor mapX vis) (currentCity : visited) (adjacentCity mapX currentCity)
 
-isConneted:: City-> RoadMap -> Bool
-isConneted starCity mapX=
+isConneted:: City-> RoadMap -> Bool -- Checks if a graph is "one way" connected by performing a DFS in the RoadMap
+isConneted starCity mapX=           -- and comparing the length of the visited cities list and  the list with all the cities in the RoadMap
     let allCities = cities mapX
         visited = dfsVisit starCity mapX []
     in length visited == length allCities
