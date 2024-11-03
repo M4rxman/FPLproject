@@ -1,6 +1,6 @@
 import qualified Data.List
---import qualified Data.Array
---import qualified Data.Bits
+import qualified Data.Array
+import qualified Data.Bits
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -59,8 +59,6 @@ pathDistance mapX (x:y:xs)=
             Just remainingDistance -> Just (d + remainingDistance)
 
 
-
-
 rome :: RoadMap -> [City]   -- returns a list with the cities that have the maximum number of direct connections 
 rome mapX =
     let cityList = cities mapX
@@ -78,7 +76,6 @@ listAllConnections :: [City] -> RoadMap -> [(City, Int)] -- Returns a list of pa
 listAllConnections _ [] = []                             -- contains a city and its number of direct connections in the roadmap     
 listAllConnections [] _ = []
 listAllConnections (cityX:xs) mapX = (cityX,countConnections cityX mapX) : listAllConnections xs mapX
-
 
 
 isStronglyConnected :: RoadMap -> Bool  --Checks if a RoadMap is stringly connected by performing a DFS in each direction
@@ -131,8 +128,68 @@ dijkstra mapX ((dist, path):queue) visited end
   where
     currentCity = last path  -- Get the current city from the path
 
+-- Add the missing definition of getDistance
+getDistance :: RoadMap -> City -> City -> Distance
+getDistance mapX city1 city2 = case distance mapX city1 city2 of
+    Just d -> d
+    Nothing -> maxBound -- maxBound represents "infinity" for unconnected cities
+
+-- Solves the Traveling Salesman Problem using dynamic programming and memoization
 travelSales :: RoadMap -> Path
-travelSales = undefined
+travelSales mapX
+    | not (isStronglyConnected mapX) = []  -- If the map is not strongly connected, return an empty list
+    | otherwise = let
+        -- Step 1: Create a list of all cities and assign each city an index
+        allCitiesList = cities mapX
+        n = length allCitiesList
+        cityIndexMap = zip allCitiesList [0..]  -- Mapping cities to indices
+        indexCityMap = map (\(city, idx) -> (idx, city)) cityIndexMap  -- Map indices back to cities
+
+        -- Convert a city name to its assigned index
+        cityToIndex city = case lookup city cityIndexMap of
+            Just idx -> idx
+            Nothing -> error "City not found in index map"
+
+        -- Convert an index to its city name
+        indexToCity idx = case lookup idx indexCityMap of
+            Just city -> city
+            Nothing -> error "Index not found in city map"
+
+        -- Step 2: Initialize memoization table
+        -- Memo array for storing minimum distances: memo[visited][lastCity]
+        memo = Data.Array.array ((0, 0), (2^n - 1, n - 1)) [((s, i), -1) | s <- [0..2^n - 1], i <- [0..n - 1]]
+
+        -- Recursive function to calculate minimum distance using DP
+        tspDP :: Int -> Int -> Distance
+        tspDP visited lastCity
+            | visited == (1 `Data.Bits.shiftL` n) - 1 = getDistance mapX (indexToCity lastCity) (indexToCity 0) -- Return to start
+            | memo Data.Array.! (visited, lastCity) /= -1 = memo Data.Array.! (visited, lastCity) -- Memoized result
+            | otherwise = let
+                -- Find minimum distance by visiting unvisited cities
+                result = minimum [getDistance mapX (indexToCity lastCity) (indexToCity nextCity) +
+                                  tspDP (visited `Data.Bits.setBit` nextCity) nextCity |
+                                  nextCity <- [0..n - 1], not (visited `Data.Bits.testBit` nextCity)]
+                in result
+
+        -- Reconstruct the path after finding the optimal tour
+        reconstructPath :: Int -> Int -> [Int]
+        reconstructPath visited lastCity
+            | visited == (1 `Data.Bits.shiftL` n) - 1 = [lastCity]  -- All cities visited, return to start
+            | otherwise = lastCity : let
+                -- Find the next city that minimizes travel distance
+                nextCity = Data.List.minimumBy (\next1 next2 ->
+                    compare (getDistance mapX (indexToCity lastCity) (indexToCity next1) +
+                            tspDP (visited `Data.Bits.setBit` next1) next1)
+                            (getDistance mapX (indexToCity lastCity) (indexToCity next2) +
+                            tspDP (visited `Data.Bits.setBit` next2) next2))
+                        [c | c <- [0..n - 1], not (visited `Data.Bits.testBit` c)]
+                in reconstructPath (visited `Data.Bits.setBit` nextCity) nextCity
+
+        -- Find the optimal path starting from city index 0
+        startCityIdx = 0
+        optimalPathIndices = reconstructPath (1 `Data.Bits.setBit` startCityIdx) startCityIdx
+        optimalPath = map indexToCity optimalPathIndices
+    in optimalPath ++ [indexToCity startCityIdx] -- Return to the starting city
 
 tspBruteForce :: RoadMap -> Path
 tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do not edit this function
